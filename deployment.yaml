@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+# Metadata Deployment
+metadata:
+  name: {{ .Values.project.name }}-harness-{{ .Values.environment }}
+  labels:
+    app: {{ .Values.project.name }}-harness-{{ .Values.environment }}
+    environment: {{ .Values.environment }}
+  namespace: {{ .Values.namespace }}
+# Setup Deployment
+spec:
+  # Strategy of Rollling Update
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 3
+      maxUnavailable: 50%
+  # Selector
+  selector:
+    matchLabels:
+      app: {{ .Values.project.name }}-harness-{{ .Values.environment }}
+      environment: {{ .Values.environment }}
+  template:
+    # Metadata Pod
+    metadata:
+      labels:
+        app: {{ .Values.project.name }}-harness-{{ .Values.environment }}
+        environment: {{ .Values.environment }}
+        framework: {{ .Values.framework | default "none" | quote }}
+      namespace: {{ .Values.namespace }}
+    # Setup pod
+    spec:
+      containers:
+        # App
+        - name: {{ .Values.project.name }}
+          image: {{ .Values.image }}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          envFrom:
+          - configMapRef:
+              name: {{ .Values.secrets.configmap }}
+        # Temp
+        {{- if and .Values.temp.enabled .Values.temp.nginx }}
+        - name: nginx
+          image: nginx
+          ports:
+            - name: nginx
+              containerPort: 8080
+              protocol: TCP
+        {{- end }}
+        {{- if and .Values.temp.enabled .Values.temp.mysql }}
+        - name: mysql
+          image: nginx
+          ports:
+            - name: mysql
+              containerPort: 8081
+              protocol: TCP
+        {{- end }}
